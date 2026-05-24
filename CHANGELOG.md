@@ -3,9 +3,13 @@
 All notable changes to this project will be documented in this file.
 
 ## [0.7.2] - 2026-05-16
+### Added
+- **Resilience:** Implemented a fallback mechanism for HRV data extraction. If the primary HRV endpoint fails (404/400), the SDK now attempts to extract HRV metrics from the Sleep endpoint.
 ### Fixed
 - **Type Safety:** Corrected Liskov Substitution Principle violations in `MockProvider` tests by aligning method signatures with `BaseBiometricProvider`.
 - **Debugging Tools:** Added missing type annotations to `debug_activity.py` to ensure clean mypy results.
+### Changed
+- **Model Refactor:** Renamed `avg_hrv` to `last_night_avg` in the `HRVData` biometric model to better reflect the underlying data source and intent.
 
 ## [0.7.1] - 2026-05-15
 ### Added

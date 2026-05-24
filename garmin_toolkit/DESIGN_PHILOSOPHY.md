@@ -29,6 +29,7 @@ We renamed the `models/` package to `protocol/`. This signifies that these are n
 ### 4. Robustness & Verification
 *   **Fail Fast:** Pydantic validation ensures that bad data from a provider is caught at the source.
 *   **Triple Redundancy:** For complex operations like Garmin workout uploads, the SDK handles the intricate JSON requirements (targets, zones, IDs) internally, exposing only a clean interface to the agent. See [GARMIN_API_QUIRKS.md](GARMIN_API_QUIRKS.md) for implementation details.
+*   **Resilient Fallbacks:** The SDK anticipates unstable API endpoints. For example, if the primary HRV endpoint fails, the SDK automatically falls back to secondary sources (like Sleep payloads) to maintain data continuity without surfacing errors to the consumer.
 
 ## Conclusion
 
