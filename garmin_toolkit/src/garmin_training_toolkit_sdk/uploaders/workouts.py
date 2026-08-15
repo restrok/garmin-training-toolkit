@@ -343,6 +343,21 @@ def create_workout(workout_data: Dict[str, Any]) -> Dict[str, Any]:
     return workout
 
 
+def upload_swimming_workout(garmin_client: Garmin, workout: Any) -> Any:
+    """Upload a swimming workout.
+
+    Args:
+        garmin_client: The Garmin API client instance.
+        workout: The workout dictionary to upload.
+
+    Returns:
+        The API response.
+    """
+    if hasattr(garmin_client, "upload_swimming_workout"):
+        return garmin_client.upload_swimming_workout(workout)
+    return garmin_client.upload_workout(workout)
+
+
 def delete_workout(garmin_client: Garmin, workout_id: str) -> bool:
     """Delete a workout by ID.
 

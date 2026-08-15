@@ -1,8 +1,20 @@
 """Pydantic models for biometric data."""
 
-from typing import Optional
+from typing import Optional, List, Tuple
+from datetime import date
+from pydantic import BaseModel, Field
 
-from pydantic import BaseModel
+
+class RespirationData(BaseModel):
+    calendar_date: date
+    lowest_respiration: Optional[float] = None
+    highest_respiration: Optional[float] = None
+    avg_waking_respiration: Optional[float] = None
+    avg_sleep_respiration: Optional[float] = None
+    timeseries: List[Tuple[int, float]] = Field(default_factory=list)
+    hourly_averages: List[Tuple[int, float, Optional[float], Optional[float]]] = Field(
+        default_factory=list
+    )
 
 
 class HRVData(BaseModel):

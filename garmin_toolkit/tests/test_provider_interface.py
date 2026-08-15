@@ -24,7 +24,10 @@ def test_tool_factory() -> None:
         def get_telemetry(self, activity_id: str) -> Any:
             """Mock get_telemetry."""
             from garmin_training_toolkit_sdk.protocol.telemetry import ActivityTelemetry
-            return ActivityTelemetry(activity_id=int(activity_id), metric_count=0, ticks=[])
+
+            return ActivityTelemetry(
+                activity_id=int(activity_id), metric_count=0, ticks=[]
+            )
 
         def upload_training_plan(self, plan: Any) -> SuccessReport:
             """Mock upload_training_plan."""

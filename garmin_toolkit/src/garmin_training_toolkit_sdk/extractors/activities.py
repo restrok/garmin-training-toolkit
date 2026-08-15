@@ -3,7 +3,7 @@ from typing import Any, List, Optional
 
 from garminconnect import Garmin
 
-from ..protocol.activities import Activity, ActivitySplit
+from ..protocol.activities import Activity, ActivitySplit, SwimLength, HRZoneTime
 from ..protocol.telemetry import ActivityTelemetry, ActivityTelemetryPoint
 
 log = logging.getLogger(__name__)
@@ -93,6 +93,28 @@ def get_activity_telemetry(
         return ActivityTelemetry(activity_id=activity_id, metric_count=0, ticks=[])
 
 
+def get_activity_hr_zones(garmin_client: Garmin, activity_id: int) -> List[HRZoneTime]:
+    """Fetch HR zones for an activity."""
+    try:
+        zones_data = garmin_client.get_activity_hr_in_timezones(activity_id)
+        if not zones_data:
+            return []
+
+        zones = []
+        for zone in zones_data:
+            zones.append(
+                HRZoneTime(
+                    zone_number=zone.get("zoneNumber"),
+                    secs_in_zone=zone.get("secsInZone"),
+                    zone_low_boundary_bpm=zone.get("zoneLowBoundary"),
+                )
+            )
+        return zones
+    except Exception as e:
+        log.warning("Failed to get HR zones for %d: %s", activity_id, e)
+    return []
+
+
 def get_activity_splits(garmin_client: Garmin, activity_id: int) -> List[ActivitySplit]:
     """Fetch detailed splits for an activity.
 
@@ -108,6 +130,25 @@ def get_activity_splits(garmin_client: Garmin, activity_id: int) -> List[Activit
         if splits_data and "lapDTOs" in splits_data:
             laps = []
             for lap in splits_data["lapDTOs"]:
+                lengths = []
+                for length in lap.get("lengthDTOs", []):
+                    lengths.append(
+                        SwimLength(
+                            length_index=length.get("lengthIndex"),
+                            start_time_gmt=length.get("startTimeGMT"),
+                            distance_m=length.get("distance"),
+                            duration_sec=length.get("duration"),
+                            avg_speed_mps=length.get("averageSpeed"),
+                            max_speed_mps=length.get("maxSpeed"),
+                            avg_hr=length.get("averageHR"),
+                            max_hr=length.get("maxHR"),
+                            total_strokes=length.get("strokes"),
+                            avg_swolf=length.get("averageSWOLF"),
+                            swim_stroke=length.get("swimStroke"),
+                            calories=length.get("calories"),
+                        )
+                    )
+
                 laps.append(
                     ActivitySplit(
                         index=lap.get("lapIndex"),
@@ -115,16 +156,24 @@ def get_activity_splits(garmin_client: Garmin, activity_id: int) -> List[Activit
                         distance_m=lap.get("distance"),
                         duration_sec=lap.get("duration"),
                         moving_duration_sec=lap.get("movingDuration"),
+                        elapsed_duration_sec=lap.get("elapsedDuration"),
                         avg_hr=lap.get("averageHR"),
                         max_hr=lap.get("maxHR"),
-                        avg_pace_mps=lap.get("averageMovingSpeed"),
+                        avg_pace_mps=lap.get("averageMovingSpeed")
+                        or lap.get("averageSpeed"),
                         avg_cadence=lap.get("averageRunCadence")
-                        or lap.get("averageBikeCadence"),
+                        or lap.get("averageBikeCadence")
+                        or lap.get("averageSwimCadence"),
                         calories=lap.get("calories"),
                         strokes=lap.get("strokes"),
                         avg_swolf=lap.get("averageSWOLF"),
+                        swim_stroke=lap.get("swimStroke"),
+                        avg_swim_cadence=lap.get("averageSwimCadence"),
+                        active_lengths=lap.get("activeLengths"),
+                        avg_strokes_per_length=lap.get("avgStrokes"),
                         avg_power=lap.get("averagePower"),
                         max_power=lap.get("maxPower"),
+                        lengths=lengths,
                     )
                 )
             return laps
@@ -162,21 +211,41 @@ def get_activities(
                 type=a.get("activityType", {}).get("typeKey", "unknown"),
                 date=activity_date,
                 duration_sec=a.get("duration"),
+                moving_duration_sec=a.get("movingDuration"),
+                elapsed_duration_sec=a.get("elapsedDuration"),
                 distance_m=a.get("distance"),
                 avg_hr=a.get("averageHR"),
                 max_hr=a.get("maxHR"),
+                min_hr=a.get("minHR"),
+                recovery_hr=a.get("recoveryHeartRate"),
                 avg_pace=a.get("averageSpeed"),
+                max_speed_mps=a.get("maxSpeed"),
                 calories=a.get("calories"),
                 elevation_gain=a.get("elevationGain"),
                 vo2max=a.get("vO2MaxValue"),
                 pool_length_m=a.get("poolLength"),
                 total_strokes=a.get("strokes"),
                 avg_swolf=a.get("averageSWOLF"),
+                swim_stroke=a.get("swimStroke"),
+                avg_swim_cadence=a.get("averageSwimCadence"),
+                active_lengths=a.get("activeLengths"),
+                avg_strokes_per_length=a.get("avgStrokes"),
+                avg_stroke_distance_m=a.get("averageStrokeDistance"),
                 avg_power=a.get("averagePower"),
                 max_power=a.get("maxPower"),
                 normalized_power=a.get("normPower"),
-                avg_cadence=a.get("averageRunCadence") or a.get("averageBikeCadence"),
-                max_cadence=a.get("maxRunCadence") or a.get("maxBikeCadence"),
+                avg_cadence=a.get("averageRunCadence")
+                or a.get("averageBikeCadence")
+                or a.get("averageSwimCadence"),
+                max_cadence=a.get("maxRunCadence")
+                or a.get("maxBikeCadence")
+                or a.get("maxSwimCadence"),
+                moderate_intensity_min=a.get("moderateIntensityMinutes"),
+                vigorous_intensity_min=a.get("vigorousIntensityMinutes"),
+                is_personal_record=a.get("pr"),
+                lap_count=a.get("steps")
+                if a.get("activityType", {}).get("typeKey") == "indoor_cardio"
+                else a.get("laps"),
             )
             # You might want to fetch splits lazily or keep this separate to avoid rate limits
             activities.append(activity)

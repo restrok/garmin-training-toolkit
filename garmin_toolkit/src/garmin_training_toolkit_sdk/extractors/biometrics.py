@@ -8,6 +8,7 @@ from ..protocol.biometrics import (
     BodyBatteryData,
     HRVData,
     ReadinessData,
+    RespirationData,
     SleepData,
     StressData,
     TrainingStatusData,
@@ -367,4 +368,52 @@ def get_training_status(
             )
     except Exception as e:
         log.warning("Training status fetch failed for %s: %s", date, e)
+    return None
+
+
+def get_respiration_data(
+    garmin_client: Garmin, date_str: str
+) -> Optional[RespirationData]:
+    """Fetch respiration data for a specific date.
+
+    Args:
+        garmin_client: The Garmin API client instance.
+        date_str: Date string (YYYY-MM-DD).
+
+    Returns:
+        A RespirationData object if successful, None otherwise.
+    """
+    try:
+        raw = garmin_client.get_respiration_data(date_str)
+        if raw:
+            cdate = datetime.strptime(date_str, "%Y-%m-%d").date()
+            timeseries = []
+            for val in raw.get("respirationValuesArray", []):
+                if isinstance(val, list) and len(val) >= 2 and val[1] is not None:
+                    timeseries.append((int(val[0]), float(val[1])))
+
+            hourly_averages = []
+            for val in raw.get("hourlyAverages", []):
+                # Typically [timestamp, avg_resp, awake_resp, sleep_resp] or similar
+                if isinstance(val, list) and len(val) >= 2:
+                    ts = int(val[0])
+                    v1 = float(val[1]) if val[1] is not None else 0.0
+                    v2 = float(val[2]) if len(val) > 2 and val[2] is not None else None
+                    v3 = float(val[3]) if len(val) > 3 and val[3] is not None else None
+                    hourly_averages.append((ts, v1, v2, v3))
+                elif isinstance(val, dict):
+                    # fallback if garminconnect changes to return dicts
+                    pass
+
+            return RespirationData(
+                calendar_date=cdate,
+                lowest_respiration=raw.get("lowestRespirationValue"),
+                highest_respiration=raw.get("highestRespirationValue"),
+                avg_waking_respiration=raw.get("wakingRespirationValue"),
+                avg_sleep_respiration=raw.get("sleepRespirationValue"),
+                timeseries=timeseries,
+                hourly_averages=hourly_averages,
+            )
+    except Exception as e:
+        log.warning("Respiration data fetch failed for %s: %s", date_str, e)
     return None
